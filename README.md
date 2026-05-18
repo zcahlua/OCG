@@ -99,7 +99,15 @@ The script uses PyTorch Geometric QM9 directly. It does not add RDKit, does not 
 Quick smoke run:
 
 ```bash
-python scripts/train_qm9.py --target 0 --epochs 1 --batch-size 8 --max-dim 2 --max-neighbors 8 --limit-train-batches 2 --limit-val-batches 1 --limit-test-batches 1
+python scripts/train_qm9.py \
+  --target 0 \
+  --epochs 1 \
+  --batch-size 8 \
+  --max-dim 2 \
+  --max-neighbors 8 \
+  --limit-train-batches 2 \
+  --limit-val-batches 1 \
+  --limit-test-batches 1
 ```
 
 Split files are cached in the selected output directory with metadata for dataset length, train size, validation size, and seed. If those settings change, delete the cached split or use a different output directory so stale splits cannot be reused silently.
@@ -108,14 +116,14 @@ Quick max-dimension ablation smoke run:
 
 ```bash
 python scripts/train_qm9.py \
-    --target 4 \
-    --epochs 1 \
-    --batch-size 8 \
-    --max-neighbors 8 \
-    --ablation-max-dims true \
-    --limit-train-batches 2 \
-    --limit-val-batches 1 \
-    --limit-test-batches 1
+  --target 4 \
+  --epochs 1 \
+  --batch-size 8 \
+  --max-neighbors 8 \
+  --ablation-max-dims true \
+  --limit-train-batches 2 \
+  --limit-val-batches 1 \
+  --limit-test-batches 1
 ```
 
 Longer ablation example:

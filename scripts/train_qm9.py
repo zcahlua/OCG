@@ -456,10 +456,8 @@ def validate_split_metadata(
     cached_metadata = state.get("metadata")
     if cached_metadata != expected_metadata:
         raise ValueError(
-            "Cached QM9 split metadata does not match this run for "
-            f"{split_path}. Expected {expected_metadata}, found "
-            f"{cached_metadata}. Delete the cached split or use a different "
-            "output directory."
+            "cached split was created with different n/train_size/val_size/seed; "
+            "delete the cached split or use a different output directory."
         )
 
 
