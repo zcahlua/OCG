@@ -1,4 +1,5 @@
 """Top-level Order-Controlled Geometric Simplicial Network."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -198,7 +199,9 @@ class OCGSN(nn.Module):
                 raise ValueError("Provide either batch_data or z and pos")
             z = z.to(device=device, dtype=torch.long)
             pos = pos.to(device=device)
-            batch = batch.to(device=device, dtype=torch.long) if batch is not None else None
+            batch = (
+                batch.to(device=device, dtype=torch.long) if batch is not None else None
+            )
             bond_edge_index = (
                 bond_edge_index.to(device=device, dtype=torch.long)
                 if bond_edge_index is not None

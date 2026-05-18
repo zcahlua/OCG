@@ -1,4 +1,5 @@
 """Permutation-invariant upper-to-lower coface aggregation."""
+
 from __future__ import annotations
 
 import torch
