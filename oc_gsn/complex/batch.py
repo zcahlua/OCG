@@ -1,4 +1,5 @@
 """Dataclass container for a lifted batched simplicial complex."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, fields

@@ -1,4 +1,5 @@
 """Pure PyTorch scatter and graph-pooling utilities."""
+
 from __future__ import annotations
 import torch
 from torch import Tensor
@@ -29,7 +30,9 @@ def scatter_max(src: Tensor, index: Tensor, dim_size: int) -> Tensor:
     return torch.where(torch.isfinite(out), out, torch.zeros_like(out))
 
 
-def graph_pool(src: Tensor, batch: Tensor, num_graphs: int, reduce: str = "sum") -> Tensor:
+def graph_pool(
+    src: Tensor, batch: Tensor, num_graphs: int, reduce: str = "sum"
+) -> Tensor:
     """Pool simplex rows into graph rows by sum or mean."""
     if reduce == "sum":
         return scatter_sum(src, batch, num_graphs)
