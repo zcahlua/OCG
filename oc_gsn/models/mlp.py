@@ -1,11 +1,22 @@
 """Small configurable MLP block."""
+
 from __future__ import annotations
 import torch
 from torch import nn, Tensor
 
+
 class MLP(nn.Module):
     """Feed-forward network using Linear, SiLU, and optional LayerNorm."""
-    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, num_layers: int = 2, activation: str = "silu", layer_norm: bool = False) -> None:
+
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        num_layers: int = 2,
+        activation: str = "silu",
+        layer_norm: bool = False,
+    ) -> None:
         super().__init__()
         if num_layers < 1:
             raise ValueError("num_layers must be >= 1")
@@ -20,6 +31,7 @@ class MLP(nn.Module):
                     mods.append(nn.LayerNorm(dims[i + 1]))
                 mods.append(nn.SiLU())
         self.net = nn.Sequential(*mods)
+
     def forward(self, x: Tensor) -> Tensor:
         """Apply the MLP to the final feature dimension."""
         return self.net(x)

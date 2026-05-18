@@ -1,4 +1,5 @@
 """E(3)-invariant geometric feature construction for lifted simplices."""
+
 from __future__ import annotations
 
 import itertools
@@ -44,42 +45,125 @@ def _bond_set(bond_edge_index: Tensor | None) -> set[tuple[int, int]]:
     return {tuple(sorted(map(int, p))) for p in pairs if int(p[0]) != int(p[1])}
 
 
-def _bond_indicator(bonds: set[tuple[int, int]], i: int, j: int, *, dtype: torch.dtype, device: torch.device) -> Tensor:
-    return torch.tensor(float(tuple(sorted((i, j))) in bonds), dtype=dtype, device=device)
+def _bond_indicator(
+    bonds: set[tuple[int, int]],
+    i: int,
+    j: int,
+    *,
+    dtype: torch.dtype,
+    device: torch.device,
+) -> Tensor:
+    return torch.tensor(
+        float(tuple(sorted((i, j))) in bonds), dtype=dtype, device=device
+    )
 
 
-def ordered_edge_raw(pos: Tensor, bonds: set[tuple[int, int]], i: int, j: int, rbf_dim: int, cutoff: float) -> Tensor:
+def ordered_edge_raw(
+    pos: Tensor,
+    bonds: set[tuple[int, int]],
+    i: int,
+    j: int,
+    rbf_dim: int,
+    cutoff: float,
+) -> Tensor:
     d = pair_distance(pos, i, j)
-    return torch.cat([rbf(d, rbf_dim, cutoff), d.reshape(1), _bond_indicator(bonds, i, j, dtype=pos.dtype, device=pos.device).reshape(1)])
+    return torch.cat(
+        [
+            rbf(d, rbf_dim, cutoff),
+            d.reshape(1),
+            _bond_indicator(bonds, i, j, dtype=pos.dtype, device=pos.device).reshape(1),
+        ]
+    )
 
 
-def ordered_triangle_raw(pos: Tensor, bonds: set[tuple[int, int]], i: int, j: int, k: int, rbf_dim: int, cutoff: float) -> Tensor:
-    dij, dik, djk = pair_distance(pos, i, j), pair_distance(pos, i, k), pair_distance(pos, j, k)
-    vals = [rbf(dij, rbf_dim, cutoff), rbf(dik, rbf_dim, cutoff), rbf(djk, rbf_dim, cutoff),
-            torch.stack([dij, dik, djk, angle_cos(pos, i, j, k), angle_cos(pos, j, i, k), angle_cos(pos, k, i, j), triangle_area(pos, i, j, k),
-                         _bond_indicator(bonds, i, j, dtype=pos.dtype, device=pos.device), _bond_indicator(bonds, i, k, dtype=pos.dtype, device=pos.device), _bond_indicator(bonds, j, k, dtype=pos.dtype, device=pos.device)])]
+def ordered_triangle_raw(
+    pos: Tensor,
+    bonds: set[tuple[int, int]],
+    i: int,
+    j: int,
+    k: int,
+    rbf_dim: int,
+    cutoff: float,
+) -> Tensor:
+    dij, dik, djk = (
+        pair_distance(pos, i, j),
+        pair_distance(pos, i, k),
+        pair_distance(pos, j, k),
+    )
+    vals = [
+        rbf(dij, rbf_dim, cutoff),
+        rbf(dik, rbf_dim, cutoff),
+        rbf(djk, rbf_dim, cutoff),
+        torch.stack(
+            [
+                dij,
+                dik,
+                djk,
+                angle_cos(pos, i, j, k),
+                angle_cos(pos, j, i, k),
+                angle_cos(pos, k, i, j),
+                triangle_area(pos, i, j, k),
+                _bond_indicator(bonds, i, j, dtype=pos.dtype, device=pos.device),
+                _bond_indicator(bonds, i, k, dtype=pos.dtype, device=pos.device),
+                _bond_indicator(bonds, j, k, dtype=pos.dtype, device=pos.device),
+            ]
+        ),
+    ]
     return torch.cat(vals)
 
 
-def ordered_tetra_raw(pos: Tensor, bonds: set[tuple[int, int]], i: int, j: int, k: int, l: int, rbf_dim: int, cutoff: float) -> Tensor:
-    pairs = [(i,j),(i,k),(i,l),(j,k),(j,l),(k,l)]
+def ordered_tetra_raw(
+    pos: Tensor,
+    bonds: set[tuple[int, int]],
+    i: int,
+    j: int,
+    k: int,
+    l: int,
+    rbf_dim: int,
+    cutoff: float,
+) -> Tensor:
+    pairs = [(i, j), (i, k), (i, l), (j, k), (j, l), (k, l)]
     ds = [pair_distance(pos, a, b) for a, b in pairs]
-    areas = [triangle_area(pos, i, j, k), triangle_area(pos, i, j, l), triangle_area(pos, i, k, l), triangle_area(pos, j, k, l)]
-    bonds_v = [_bond_indicator(bonds, a, b, dtype=pos.dtype, device=pos.device) for a, b in pairs]
-    return torch.cat([*(rbf(d, rbf_dim, cutoff) for d in ds), torch.stack(ds + areas + [tetra_abs_volume(pos, i, j, k, l)] + bonds_v)])
+    areas = [
+        triangle_area(pos, i, j, k),
+        triangle_area(pos, i, j, l),
+        triangle_area(pos, i, k, l),
+        triangle_area(pos, j, k, l),
+    ]
+    bonds_v = [
+        _bond_indicator(bonds, a, b, dtype=pos.dtype, device=pos.device)
+        for a, b in pairs
+    ]
+    return torch.cat(
+        [
+            *(rbf(d, rbf_dim, cutoff) for d in ds),
+            torch.stack(ds + areas + [tetra_abs_volume(pos, i, j, k, l)] + bonds_v),
+        ]
+    )
 
 
-def build_features(z: Tensor, pos: Tensor, k1: Tensor, k2: Tensor, k3: Tensor, bond_edge_index: Tensor | None, rbf_dim: int, cutoff: float) -> dict[str, Tensor]:
+def build_features(
+    z: Tensor,
+    pos: Tensor,
+    k1: Tensor,
+    k2: Tensor,
+    k3: Tensor,
+    bond_edge_index: Tensor | None,
+    rbf_dim: int,
+    cutoff: float,
+) -> dict[str, Tensor]:
     """Build invariant atom features and permutation-expanded simplex raw features."""
     device, dtype, n = pos.device, pos.dtype, int(pos.shape[0])
     bonds = _bond_set(bond_edge_index)
     lift_deg = torch.zeros(n, dtype=dtype, device=device)
     bond_deg = torch.zeros(n, dtype=dtype, device=device)
     for i, j in k1.tolist():
-        lift_deg[int(i)] += 1; lift_deg[int(j)] += 1
+        lift_deg[int(i)] += 1
+        lift_deg[int(j)] += 1
     for i, j in bonds:
         if 0 <= i < n and 0 <= j < n:
-            bond_deg[i] += 1; bond_deg[j] += 1
+            bond_deg[i] += 1
+            bond_deg[j] += 1
     scale = float(max(1, n - 1))
     gamma0 = torch.stack([lift_deg / scale, bond_deg / scale], dim=-1)
 
@@ -89,21 +173,77 @@ def build_features(z: Tensor, pos: Tensor, k1: Tensor, k2: Tensor, k3: Tensor, b
 
     epn, g1 = [], []
     for row in k1.tolist():
-        nodes = list(map(int, row)); epn.append([[nodes[a] for a in p] for p in edge_perms]); g1.append([ordered_edge_raw(pos, bonds, nodes[p[0]], nodes[p[1]], rbf_dim, cutoff) for p in edge_perms])
+        nodes = list(map(int, row))
+        epn.append([[nodes[a] for a in p] for p in edge_perms])
+        g1.append(
+            [
+                ordered_edge_raw(pos, bonds, nodes[p[0]], nodes[p[1]], rbf_dim, cutoff)
+                for p in edge_perms
+            ]
+        )
     tpn, g2 = [], []
     for row in k2.tolist():
-        nodes = list(map(int, row)); tpn.append([[nodes[a] for a in p] for p in tri_perms]); g2.append([ordered_triangle_raw(pos, bonds, nodes[p[0]], nodes[p[1]], nodes[p[2]], rbf_dim, cutoff) for p in tri_perms])
+        nodes = list(map(int, row))
+        tpn.append([[nodes[a] for a in p] for p in tri_perms])
+        g2.append(
+            [
+                ordered_triangle_raw(
+                    pos, bonds, nodes[p[0]], nodes[p[1]], nodes[p[2]], rbf_dim, cutoff
+                )
+                for p in tri_perms
+            ]
+        )
     qpn, g3 = [], []
     for row in k3.tolist():
-        nodes = list(map(int, row)); qpn.append([[nodes[a] for a in p] for p in tet_perms]); g3.append([ordered_tetra_raw(pos, bonds, nodes[p[0]], nodes[p[1]], nodes[p[2]], nodes[p[3]], rbf_dim, cutoff) for p in tet_perms])
+        nodes = list(map(int, row))
+        qpn.append([[nodes[a] for a in p] for p in tet_perms])
+        g3.append(
+            [
+                ordered_tetra_raw(
+                    pos,
+                    bonds,
+                    nodes[p[0]],
+                    nodes[p[1]],
+                    nodes[p[2]],
+                    nodes[p[3]],
+                    rbf_dim,
+                    cutoff,
+                )
+                for p in tet_perms
+            ]
+        )
 
     g1dim, g2dim, g3dim = rbf_dim + 2, 3 * rbf_dim + 10, 6 * rbf_dim + 17
     return {
         "gamma0": gamma0,
-        "edge_perm_nodes": torch.tensor(epn, dtype=torch.long, device=device) if epn else torch.empty((0, 2, 2), dtype=torch.long, device=device),
-        "tri_perm_nodes": torch.tensor(tpn, dtype=torch.long, device=device) if tpn else torch.empty((0, 6, 3), dtype=torch.long, device=device),
-        "tet_perm_nodes": torch.tensor(qpn, dtype=torch.long, device=device) if qpn else torch.empty((0, 24, 4), dtype=torch.long, device=device),
-        "gamma1_perm": torch.stack([torch.stack(x) for x in g1]) if g1 else torch.empty((0, 2, g1dim), dtype=dtype, device=device),
-        "gamma2_perm": torch.stack([torch.stack(x) for x in g2]) if g2 else torch.empty((0, 6, g2dim), dtype=dtype, device=device),
-        "gamma3_perm": torch.stack([torch.stack(x) for x in g3]) if g3 else torch.empty((0, 24, g3dim), dtype=dtype, device=device),
+        "edge_perm_nodes": (
+            torch.tensor(epn, dtype=torch.long, device=device)
+            if epn
+            else torch.empty((0, 2, 2), dtype=torch.long, device=device)
+        ),
+        "tri_perm_nodes": (
+            torch.tensor(tpn, dtype=torch.long, device=device)
+            if tpn
+            else torch.empty((0, 6, 3), dtype=torch.long, device=device)
+        ),
+        "tet_perm_nodes": (
+            torch.tensor(qpn, dtype=torch.long, device=device)
+            if qpn
+            else torch.empty((0, 24, 4), dtype=torch.long, device=device)
+        ),
+        "gamma1_perm": (
+            torch.stack([torch.stack(x) for x in g1])
+            if g1
+            else torch.empty((0, 2, g1dim), dtype=dtype, device=device)
+        ),
+        "gamma2_perm": (
+            torch.stack([torch.stack(x) for x in g2])
+            if g2
+            else torch.empty((0, 6, g2dim), dtype=dtype, device=device)
+        ),
+        "gamma3_perm": (
+            torch.stack([torch.stack(x) for x in g3])
+            if g3
+            else torch.empty((0, 24, g3dim), dtype=dtype, device=device)
+        ),
     }
