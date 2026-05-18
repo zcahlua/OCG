@@ -70,7 +70,7 @@ The lifted topology construction is discrete and non-differentiable. Gradients w
 
 ## Limitations
 
-This is not full 4-WL, not the local 4-WL tuple-patch model, and not a high-degree equivariant tensor model. Chirality is not implemented in v1 and `use_chirality=True` raises `NotImplementedError`. There is no RDKit integration and no QM9/MD17 training loop. Existing molecular models can be baselines or future optional stems, but are not the core.
+This is not full 4-WL, not the local 4-WL tuple-patch model, and not a high-degree equivariant tensor model. Chirality is not implemented in v1 and `use_chirality=True` raises `NotImplementedError`. There is no RDKit integration, no MD17 training loop, and no force-training support. The included QM9 script is a lightweight benchmark layer around the existing model rather than production training infrastructure. Existing molecular models can be baselines or future optional stems, but are not the core.
 
 ## Run
 
@@ -82,4 +82,63 @@ python scripts/smoke_test.py
 
 ## Future extensions
 
-Cache `SimplicialBatch` in dataset transforms, add QM9/MD17 loaders, add scalar-vector geometric stems, add force prediction via `F_i=-grad_{x_i}E`, add a permutation-consistent chirality pseudoscalar, and optimize clique enumeration.
+Future work may add MD17 loaders, scalar-vector geometric stems, force prediction via `F_i=-grad_{x_i}E`, a permutation-consistent chirality pseudoscalar, optimized clique enumeration, and optional cached `SimplicialBatch` transforms.
+
+## Lightweight QM9 training
+
+This repository includes an extremely lightweight first QM9 benchmark script for the existing OC-GSN model. It is intended to verify real-dataset loading, deterministic split handling, target normalization, checkpointing, and MAE/MSE/RMSE reporting; it is not a full experimental framework and does not claim SOTA.
+
+Install the optional QM9 dependency separately:
+
+```bash
+pip install -r requirements-qm9.txt
+```
+
+The script uses PyTorch Geometric QM9 directly. It does not add RDKit, does not regenerate QM9 conformers, does not train forces, and does not add MD17 or force datasets. Force datasets such as MD17 should be added later if force-training support is developed separately.
+
+Quick smoke run:
+
+```bash
+python scripts/train_qm9.py \
+    --target 0 \
+    --epochs 1 \
+    --batch-size 8 \
+    --max-dim 2 \
+    --max-neighbors 8 \
+    --limit-train-batches 2 \
+    --limit-val-batches 1 \
+    --limit-test-batches 1
+```
+
+Quick max-dimension ablation smoke run:
+
+```bash
+python scripts/train_qm9.py \
+    --target 4 \
+    --epochs 1 \
+    --batch-size 8 \
+    --max-neighbors 8 \
+    --ablation-max-dims true \
+    --limit-train-batches 2 \
+    --limit-val-batches 1 \
+    --limit-test-batches 1
+```
+
+Longer ablation example:
+
+```bash
+python scripts/train_qm9.py \
+    --target 4 \
+    --epochs 20 \
+    --batch-size 16 \
+    --max-neighbors 8 \
+    --ablation-max-dims true
+```
+
+The default QM9 settings use `max_dim=2` and `max_neighbors=8` to keep the first benchmark lightweight. Use `--ablation-max-dims` to test `max_dim=3` and include tetrahedra.
+
+Runtime depends on device, cutoff, max_neighbors, max_dim, batch size, and the cost of online simplicial complex construction. The default settings are intended to be lightweight, but no fixed runtime is guaranteed.
+
+The QM9 target is normalized using the training split only, training uses normalized MSE, and evaluation reports MAE/MSE/RMSE in original target units. Splits are deterministic for a seed and are shared across `--ablation-max-dims` runs, while each max-dimension run uses a fresh model and optimizer.
+
+Topology construction is discrete and non-differentiable. Gradients flow through selected geometric features, not through edge/simplex selection.
