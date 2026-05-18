@@ -58,16 +58,9 @@ h_sigma^0 = Pool_{pi in S_{k+1}} phi_k(ordered_geom(pi(sigma)) || ordered_atom_e
 
 for `k=1,2,3`. Default geometry uses distances, angle cosines, triangle areas, and unsigned tetrahedron volumes, giving scalar translation-, rotation-, and reflection-invariant features. Default incidence features are constants and contain no raw indices, orientation signs, simplex IDs, or lexicographic ranks.
 
-
-## Precomputed SimplicialBatch compatibility
-
-If passing a precomputed `SimplicialBatch` to `OCGSN.forward`, it must be built with feature conventions compatible with the model configuration, especially `rbf_dim` and `use_chirality`. The model validates `gamma1_perm`, `gamma2_perm`, `gamma3_perm`, and permutation-node tensor shapes and raises `ValueError` on mismatch.
-
-`OCGSN` also exposes `max_num_simplices_per_graph`. If the cap is exceeded during raw-tensor lifting, the model raises `RuntimeError` instead of silently truncating, because silent truncation can break permutation invariance.
-
 ## Limitations
 
-This is not full 4-WL, not the local 4-WL tuple-patch model, and not a high-degree equivariant tensor model. Chirality is not implemented in v1 and `use_chirality=True` raises `NotImplementedError`. There is no RDKit integration and no QM9/MD17 training loop. Existing molecular models can be baselines or future optional stems, but are not the core. Topology construction is discrete and non-differentiable: gradients with respect to positions flow through the geometric features computed on the selected simplices, but not through edge/simplex selection itself.
+This is not full 4-WL, not the local 4-WL tuple-patch model, and not a high-degree equivariant tensor model. Chirality is not implemented in v1 and `use_chirality=True` raises `NotImplementedError`. There is no RDKit integration and no QM9/MD17 training loop. Existing molecular models can be baselines or future optional stems, but are not the core.
 
 ## Run
 
