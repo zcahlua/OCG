@@ -58,6 +58,16 @@ h_sigma^0 = Pool_{pi in S_{k+1}} phi_k(ordered_geom(pi(sigma)) || ordered_atom_e
 
 for `k=1,2,3`. Default geometry uses distances, angle cosines, triangle areas, and unsigned tetrahedron volumes, giving scalar translation-, rotation-, and reflection-invariant features. Default incidence features are constants and contain no raw indices, orientation signs, simplex IDs, or lexicographic ranks.
 
+## Precomputed SimplicialBatch compatibility
+
+`OCGSN.forward` can accept either raw molecular tensors (`z`, `pos`, optional `batch` and `bond_edge_index`) or a precomputed `SimplicialBatch`. If passing a precomputed `SimplicialBatch`, it must be built with feature conventions compatible with the model configuration, especially `rbf_dim` and `use_chirality`. The model validates `gamma0`, `gamma1_perm`, `gamma2_perm`, `gamma3_perm`, and permutation-node tensor shapes before initialization. If dimensions mismatch, the model raises `ValueError` rather than failing later with a low-level `Linear`/matmul error.
+
+`OCGSN` exposes `max_num_simplices_per_graph` and forwards it to the lift. If a graph exceeds the cap, the model raises `RuntimeError` rather than silently truncating simplices, because silent truncation can break permutation invariance. The `tie_tol` constructor argument is also forwarded to kNN/radius tie handling during raw-tensor lifting.
+
+## Differentiability of the lift
+
+The lifted topology construction is discrete and non-differentiable. Gradients with respect to atomic positions flow through the geometric features computed on the selected simplices, not through edge/simplex selection itself. The selected `K1`/`K2`/`K3` topology is treated as fixed for the forward/backward pass.
+
 ## Limitations
 
 This is not full 4-WL, not the local 4-WL tuple-patch model, and not a high-degree equivariant tensor model. Chirality is not implemented in v1 and `use_chirality=True` raises `NotImplementedError`. There is no RDKit integration and no QM9/MD17 training loop. Existing molecular models can be baselines or future optional stems, but are not the core.
