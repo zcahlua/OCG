@@ -439,15 +439,47 @@ def run_experiment(
     return metrics
 
 
+def split_metadata(n: int, train_size: int, val_size: int, seed: int) -> dict[str, int]:
+    return {
+        "n": int(n),
+        "train_size": int(train_size),
+        "val_size": int(val_size),
+        "seed": int(seed),
+    }
+
+
+def validate_split_metadata(
+    split_path: Path,
+    state: dict[str, Any],
+    expected_metadata: dict[str, int],
+) -> None:
+    cached_metadata = state.get("metadata")
+    if cached_metadata != expected_metadata:
+        raise ValueError(
+            "Cached QM9 split metadata does not match this run for "
+            f"{split_path}. Expected {expected_metadata}, found "
+            f"{cached_metadata}. Delete the cached split or use a different "
+            "output directory."
+        )
+
+
 def load_or_create_split(
     split_path: Path, n: int, train_size: int, val_size: int, seed: int
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    metadata = split_metadata(n, train_size, val_size, seed)
     if split_path.exists():
         state = torch.load(split_path, map_location="cpu")
+        validate_split_metadata(split_path, state, metadata)
         return state["train_idx"], state["val_idx"], state["test_idx"]
+
     split = make_split(n, train_size=train_size, val_size=val_size, seed=seed)
     torch.save(
-        {"train_idx": split[0], "val_idx": split[1], "test_idx": split[2]},
+        {
+            "metadata": metadata,
+            "train_idx": split[0],
+            "val_idx": split[1],
+            "test_idx": split[2],
+        },
         split_path,
     )
     return split
